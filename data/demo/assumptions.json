@@ -1,0 +1,27 @@
+{
+  "version": "v1",
+  "fuel_l_per_100km": {
+    "value": 29,
+    "unit": "L/100km",
+    "note": "Box truck, about 8 mpg; single rate for loaded and empty running",
+    "source": "TODO: cite"
+  },
+  "co2_kg_per_l": {
+    "value": 2.70,
+    "unit": "kg CO2/L",
+    "note": "Diesel combustion (tank-to-wheel)",
+    "source": "TODO: cite"
+  },
+  "fuel_price_usd_per_l": {
+    "value": 0.98,
+    "unit": "USD/L",
+    "note": "US on-highway diesel, about $3.70/gal",
+    "source": "TODO: cite"
+  },
+  "max_detour_km": {
+    "value": 30,
+    "unit": "km",
+    "note": "Extra distance the carrier's truck may add to pick up a shared load",
+    "source": "TODO: cite"
+  }
+}
