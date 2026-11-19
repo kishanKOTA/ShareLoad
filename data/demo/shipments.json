@@ -1,0 +1,50 @@
+[
+  {
+    "id": "ship-b",
+    "org_id": "lakeview",
+    "origin": { "name": "Lakeview Supply warehouse, Chicago, IL", "lat": 41.9398, "lon": -87.6589 },
+    "destination": { "name": "Customer site, Madison, WI", "lat": 43.0747, "lon": -89.3841 },
+    "weight_kg": 1200,
+    "volume_m3": 8,
+    "cargo_type": "ambient",
+    "hazardous": false,
+    "temp_min_c": null,
+    "temp_max_c": null,
+    "pickup_window": { "start": "2026-11-20T08:00:00-06:00", "end": "2026-11-20T12:00:00-06:00" },
+    "delivery_window": { "start": "2026-11-20T13:00:00-06:00", "end": "2026-11-20T20:00:00-06:00" },
+    "raw_text": "From: Dana Ruiz <dispatch@lakeviewsupply.example>\nTo: logistics@shareload.example\nSubject: Chicago to Madison load, Fri Nov 20\nDate: Wed, 18 Nov 2026 16:12:00 -0600\n\nHi team,\n\nWe need to move a load from our Lakeview warehouse in Chicago up to a customer in Madison, WI this Friday, Nov 20.\n\n- 6 pallets of packaged dry goods (shelf-stable, no refrigeration needed)\n- Total weight about 1,200 kg, roughly 8 cubic meters\n- Nothing hazardous\n- Pickup at our dock any time between 8 AM and noon\n- Customer can receive between 1 PM and 8 PM the same day\n\nAll times Central. Let me know if anyone has room on a truck heading that way.\n\nThanks,\nDana Ruiz\nDispatch, Lakeview Supply Co.",
+    "extraction": { "confidence": 0.94, "missing_fields": [] }
+  },
+  {
+    "id": "ship-b-reefer",
+    "org_id": "lakeview",
+    "origin": { "name": "Lakeview Supply warehouse, Chicago, IL", "lat": 41.9398, "lon": -87.6589 },
+    "destination": { "name": "Grocery co-op, Madison, WI", "lat": 43.0896, "lon": -89.3549 },
+    "weight_kg": 900,
+    "volume_m3": 6,
+    "cargo_type": "refrigerated",
+    "hazardous": false,
+    "temp_min_c": 2,
+    "temp_max_c": 6,
+    "pickup_window": { "start": "2026-11-20T08:00:00-06:00", "end": "2026-11-20T12:00:00-06:00" },
+    "delivery_window": { "start": "2026-11-20T13:00:00-06:00", "end": "2026-11-20T20:00:00-06:00" },
+    "raw_text": null,
+    "extraction": null
+  },
+  {
+    "id": "ship-b-late",
+    "org_id": "lakeview",
+    "origin": { "name": "Lakeview Supply warehouse, Chicago, IL", "lat": 41.9398, "lon": -87.6589 },
+    "destination": { "name": "Customer site, Madison, WI", "lat": 43.0747, "lon": -89.3841 },
+    "weight_kg": 700,
+    "volume_m3": 4,
+    "cargo_type": "ambient",
+    "hazardous": false,
+    "temp_min_c": null,
+    "temp_max_c": null,
+    "pickup_window": { "start": "2026-11-20T15:00:00-06:00", "end": "2026-11-20T17:00:00-06:00" },
+    "delivery_window": { "start": "2026-11-20T16:00:00-06:00", "end": "2026-11-20T20:00:00-06:00" },
+    "raw_text": null,
+    "extraction": null
+  }
+]

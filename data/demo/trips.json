@@ -1,0 +1,28 @@
+[
+  {
+    "id": "trip-a-outbound",
+    "org_id": "northstar",
+    "vehicle_id": "veh-a",
+    "origin": { "name": "NorthStar depot, Madison, WI", "lat": 43.0731, "lon": -89.4012 },
+    "destination": { "name": "Customer drop, West Loop, Chicago, IL", "lat": 41.8847, "lon": -87.6480 },
+    "depart_window": { "start": "2026-11-20T06:00:00-06:00", "end": "2026-11-20T07:00:00-06:00" },
+    "arrive_window": { "start": "2026-11-20T08:45:00-06:00", "end": "2026-11-20T10:30:00-06:00" },
+    "distance_km": 240,
+    "available_kg": 0,
+    "available_m3": 0,
+    "leg": "outbound"
+  },
+  {
+    "id": "trip-a-return",
+    "org_id": "northstar",
+    "vehicle_id": "veh-a",
+    "origin": { "name": "Customer drop, West Loop, Chicago, IL", "lat": 41.8847, "lon": -87.6480 },
+    "destination": { "name": "NorthStar depot, Madison, WI", "lat": 43.0731, "lon": -89.4012 },
+    "depart_window": { "start": "2026-11-20T11:00:00-06:00", "end": "2026-11-20T14:00:00-06:00" },
+    "arrive_window": { "start": "2026-11-20T13:45:00-06:00", "end": "2026-11-20T17:30:00-06:00" },
+    "distance_km": 240,
+    "available_kg": 4500,
+    "available_m3": 30,
+    "leg": "return"
+  }
+]

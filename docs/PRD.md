@@ -53,7 +53,7 @@ One Madison ↔ Chicago lane, two fictional businesses, one feasible match and t
 | Business B | Lakeview Supply Co. (fictional), Chicago |
 | Shipment B (match) | 1,200 kg, 8 m³, ambient, non-hazardous; pickup 08:00–12:00, deliver Madison 13:00–20:00. Entered as free text and parsed by Gemini |
 | Reject 1 | Refrigerated shipment Chicago → Madison: fails `CARGO_TEMP_UNSUPPORTED` |
-| Reject 2 | Shipment Chicago → Milwaukee: fails `DETOUR_EXCEEDS_LIMIT` |
+| Reject 2 | Ambient shipment Chicago → Madison, 700 kg, 4 m³; pickup 15:00–17:00, after Trip A's return leaves Chicago (by 14:00): fails `TIME_WINDOW_CONFLICT` |
 | Demo clock | Frozen at the scenario date in config, so nothing shows as expired on Demo Day (Nov 24) |
 
 **Baseline decision (locked):** without ShareLoad, Business B hires a Chicago-based truck that drives Chicago → Madison and back empty. With ShareLoad, B's trip is fully avoided and A adds a small pickup detour in Chicago.

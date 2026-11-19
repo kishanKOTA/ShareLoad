@@ -1,0 +1,14 @@
+[
+  {
+    "id": "northstar",
+    "name": "NorthStar Regional Freight",
+    "region": "Madison, WI",
+    "is_sample": true
+  },
+  {
+    "id": "lakeview",
+    "name": "Lakeview Supply Co.",
+    "region": "Chicago, IL",
+    "is_sample": true
+  }
+]
