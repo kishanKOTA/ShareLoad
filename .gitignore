@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets (keep .env.example tracked)
+.env
+
+# Node / Next.js
+node_modules/
+.next/
+
+# SQLite databases (proposals/audit are re-seeded by demo reset)
+*.db
