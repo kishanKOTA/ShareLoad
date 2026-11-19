@@ -1,2 +1,2 @@
 # ShareLoad
-ShareLoad is an AI-powered collaborative logistics platform that helps businesses reduce transportation costs and carbon emissions by sharing truck capacity instead of sending separate, partially empty trucks.
+ShareLoad is an AI agent that finds unused truck capacity across businesses, checks whether the match is feasible, and shows the fuel, cost and CO₂ saved before both companies approve.
