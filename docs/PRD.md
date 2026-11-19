@@ -58,13 +58,13 @@ One Madison ↔ Chicago lane, two fictional businesses, one feasible match and t
 
 **Baseline decision (locked):** without ShareLoad, Business B hires a Chicago-based truck that drives Chicago → Madison and back empty. With ShareLoad, B's trip is fully avoided and A adds a small pickup detour in Chicago.
 
-**Working numbers** (approximate; to be replaced with cached OSRM distances and cited factors):
+**Working numbers** (cached OSRM distances, `data/demo/routes.geojson`; factors from `data/demo/assumptions.json`, citations still TODO):
 
 | Scenario | Vehicle-km | Fuel (L) | CO₂ (kg) |
 | --- | --- | --- | --- |
-| Baseline: A round trip 480 + B round trip 480 | 960 | 278 | 752 |
-| Shared: A round trip 480 + 20 km detour | 500 | 145 | 392 |
-| **Net saving** | **460 (48%)** | **133** | **360** |
+| Baseline: A round trip 236.4 + 240.5 + B round trip 467.1 | 944.0 | 273.8 | 739.2 |
+| Shared: A outbound 236.4 + return via Lakeview pickup 246.6 (6.1 km detour) | 483.0 | 140.1 | 378.2 |
+| **Net saving** | **461.0 (49%)** | **133.7** | **361.0** |
 
 Assumes 29 L/100 km (about 8 mpg box truck) and 2.70 kg CO₂ per litre of diesel. Both must be cited in `docs/calculation-methodology.md` before we show them.
 
