@@ -125,7 +125,20 @@ def test_uncached_route_cannot_confirm_time(trips, shipments, vehicle, assumptio
         trips["trip-a-return"], shipments["ship-b"], vehicle, assumptions,
         routes={"type": "FeatureCollection", "features": []},
     )
-    assert _codes(result) == {ReasonCode.TIME_WINDOW_CONFLICT}
+    assert _codes(result) == {ReasonCode.TIME_WINDOW_CONFLICT, ReasonCode.DETOUR_EXCEEDS_LIMIT}
+
+
+def test_demo_detour_within_limit(trips, shipments, vehicle, assumptions):
+    result = validate_candidate(trips["trip-a-return"], shipments["ship-b"], vehicle, assumptions)
+    assert _check(result, "detour").detail == "6.1 km extra, limit 30 km"
+
+
+@pytest.mark.parametrize(("limit", "passes"), [(6.1, True), (6.0, False)])
+def test_detour_limit_edge(trips, shipments, vehicle, assumptions, limit, passes):
+    tight = {**assumptions, "max_detour_km": {**assumptions["max_detour_km"], "value": limit}}
+    result = validate_candidate(trips["trip-a-return"], shipments["ship-b"], vehicle, tight)
+    assert _check(result, "detour").passed is passes
+    assert _codes(result) == (set() if passes else {ReasonCode.DETOUR_EXCEEDS_LIMIT})
 
 
 def test_mismatched_vehicle_raises(trips, shipments, vehicle, assumptions):

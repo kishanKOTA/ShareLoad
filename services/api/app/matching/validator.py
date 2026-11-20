@@ -13,19 +13,21 @@ is looked up by its stop sequence:
 The cache stores one ``duration_min`` per route plus per-leg distances, so each
 leg's drive time is the route duration split in proportion to leg distance
 (stated simplification). Loading/unloading dwell time is not modelled.
+
+The detour (shared leg − direct leg) must not exceed ``max_detour_km`` from
+assumptions. A candidate whose shared route isn't cached fails the time and
+detour checks, since neither can be confirmed.
 """
 
 from __future__ import annotations
 
-import json
 import math
 from datetime import datetime, timedelta
-from functools import lru_cache
-from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from pydantic import Field
 
+from app.routing import routes as routing
 from app.schemas import (
     CargoType,
     Check,
@@ -37,8 +39,6 @@ from app.schemas import (
     Trip,
     Vehicle,
 )
-
-ROUTES_PATH = Path(__file__).resolve().parents[4] / "data" / "demo" / "routes.geojson"
 
 # Largest allowed angle between the trip's and the shipment's compass bearings.
 # Can be overridden with an optional "max_bearing_diff_deg" entry in assumptions.
@@ -73,7 +73,7 @@ def validate_candidate(
     if vehicle.id != trip.vehicle_id:
         raise ValueError(f"vehicle {vehicle.id} does not run trip {trip.id} ({trip.vehicle_id})")
     if routes is None:
-        routes = _load_cached_routes()
+        routes = routing.load_routes()
 
     missing = _missing_fields(shipment)
     checks = [
@@ -83,6 +83,7 @@ def validate_candidate(
         _check_cargo_temperature(shipment, vehicle),
         _check_hazmat(shipment, vehicle),
         _check_direction(trip, shipment, _max_bearing_diff(assumptions)),
+        _check_detour(trip, shipment, routes, _max_detour_km(assumptions)),
         *_check_time_windows(trip, shipment, routes),
     ]
 
@@ -234,34 +235,48 @@ def _check_direction(trip: Trip, shipment: Shipment, max_diff_deg: float) -> Che
     return _passed(name, detail)
 
 
+def _max_detour_km(assumptions: Mapping[str, Any]) -> float:
+    entry = assumptions["max_detour_km"]
+    return float(entry["value"] if isinstance(entry, Mapping) else entry)
+
+
+def _no_route_detail(trip: Trip, shipment: Shipment) -> str:
+    return (
+        f"no cached route for {' -> '.join(routing.shared_stops(trip, shipment))}; "
+        "cannot confirm"
+    )
+
+
+def _check_detour(
+    trip: Trip, shipment: Shipment, routes: Mapping[str, Any], max_km: float
+) -> Check:
+    name = "detour"
+    missing = [f for f in ("origin", "destination") if getattr(shipment, f) is None]
+    if missing:
+        return _missing(name, missing)
+    detour = routing.detour_km(trip, shipment, routes)
+    if detour is None:
+        return _failed(name, ReasonCode.DETOUR_EXCEEDS_LIMIT, _no_route_detail(trip, shipment))
+    detail = f"{detour:,.1f} km extra, limit {max_km:g} km"
+    if detour > max_km:
+        return _failed(name, ReasonCode.DETOUR_EXCEEDS_LIMIT, detail)
+    return _passed(name, detail)
+
+
 # --------------------------------------------------------------------------- #
 # Time windows
 # --------------------------------------------------------------------------- #
-
-
-@lru_cache(maxsize=1)
-def _load_cached_routes() -> dict[str, Any]:
-    with ROUTES_PATH.open(encoding="utf-8") as f:
-        return json.load(f)
 
 
 def _shared_leg_minutes(
     trip: Trip, shipment: Shipment, routes: Mapping[str, Any]
 ) -> tuple[float, float] | None:
     """Drive minutes (trip origin -> pickup, pickup -> delivery), or None if not cached."""
-    assert shipment.origin is not None and shipment.destination is not None
-    stops = [trip.origin.name, shipment.origin.name, shipment.destination.name, trip.destination.name]
-    for feature in routes.get("features", []):
-        props = feature.get("properties", {})
-        if props.get("stops") != stops:
-            continue
-        legs_km = props["legs_km"]
-        total_km = sum(legs_km)
-        if total_km <= 0:
-            return 0.0, 0.0
-        per_km = props["duration_min"] / total_km
-        return legs_km[0] * per_km, legs_km[1] * per_km
-    return None
+    feature = routing.find_route(routing.shared_stops(trip, shipment), routes)
+    if feature is None:
+        return None
+    legs = routing.leg_minutes(feature)
+    return legs[0], legs[1]
 
 
 def _clip(lo: datetime, hi: datetime, window: TimeWindow, offset: timedelta) -> tuple[datetime, datetime]:
@@ -287,10 +302,7 @@ def _check_time_windows(trip: Trip, shipment: Shipment, routes: Mapping[str, Any
 
     legs = _shared_leg_minutes(trip, shipment, routes)
     if legs is None:
-        detail = (
-            f"no cached drive time for {trip.origin.name} -> {shipment.origin.name} -> "
-            f"{shipment.destination.name} -> {trip.destination.name}; cannot confirm windows"
-        )
+        detail = _no_route_detail(trip, shipment)
         return [
             _failed(pickup_name, ReasonCode.TIME_WINDOW_CONFLICT, detail),
             _failed(delivery_name, ReasonCode.TIME_WINDOW_CONFLICT, detail),
