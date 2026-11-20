@@ -22,6 +22,9 @@ interface OrgContextValue {
   loading: boolean;
   error: string | null;
   reload: () => void;
+  /** Bumped after a demo reset or a write, so pages know to refetch. */
+  dataVersion: number;
+  notifyDataChanged: () => void;
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null);
@@ -32,6 +35,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [dataVersion, setDataVersion] = useState(0);
+  const notifyDataChanged = useCallback(() => setDataVersion((n) => n + 1), []);
 
   // Restore the last selected org after hydration.
   useEffect(() => {
@@ -88,8 +93,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       reload: () => setAttempt((n) => n + 1),
+      dataVersion,
+      notifyDataChanged,
     }),
-    [orgId, setOrgId, organizations, loading, error],
+    [orgId, setOrgId, organizations, loading, error, dataVersion, notifyDataChanged],
   );
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
@@ -99,6 +106,13 @@ export function useOrg(): OrgContextValue {
   const ctx = useContext(OrgContext);
   if (!ctx) throw new Error("useOrg must be used inside <OrgProvider>");
   return ctx;
+}
+
+/** Short display name for an org id, falling back to the id itself. */
+export function orgLabel(organizations: Organization[], id: string | null | undefined): string {
+  if (!id) return "ShareLoad";
+  const org = organizations.find((o) => o.id === id);
+  return org ? shortOrgName(org) : id;
 }
 
 /** "NorthStar Regional Freight" -> "NorthStar" for compact UI. */

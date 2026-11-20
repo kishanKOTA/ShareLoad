@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import OpportunityCard from "@/components/overview/OpportunityCard";
 import RejectedCard from "@/components/overview/RejectedCard";
 import ScanSummary from "@/components/overview/ScanSummary";
@@ -10,11 +10,19 @@ import { useOrg } from "@/lib/org-context";
 import type { AgentScanResult } from "@/lib/types";
 
 export default function OverviewPage() {
-  const { orgId, currentOrg } = useOrg();
+  const { orgId, currentOrg, dataVersion } = useOrg();
   const [useCached, setUseCached] = useState(true);
   const [result, setResult] = useState<AgentScanResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A demo reset clears the server's scan, so drop ours too.
+  useEffect(() => {
+    if (dataVersion > 0) {
+      setResult(null);
+      setError(null);
+    }
+  }, [dataVersion]);
 
   async function runScan() {
     setRunning(true);

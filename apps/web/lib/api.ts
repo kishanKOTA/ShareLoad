@@ -1,4 +1,4 @@
-import type { AgentScanResult, Opportunity, Organization, Proposal } from "./types";
+import type { AgentScanResult, AuditEvent, Opportunity, Organization, Proposal } from "./types";
 
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -64,4 +64,20 @@ export const api = {
     apiFetch<Proposal>(`/opportunities/${encodeURIComponent(opportunityId)}/proposals`, orgId, {
       method: "POST",
     }),
+
+  /** Proposals the org is a party to. */
+  proposals: (orgId: string) => apiFetch<Proposal[]>("/proposals", orgId),
+
+  /** 403 if not a party; 409 if already final or this org already decided. */
+  decide: (proposalId: string, orgId: string, decision: "approve" | "reject", comment?: string) =>
+    apiFetch<Proposal>(`/proposals/${encodeURIComponent(proposalId)}/decision`, orgId, {
+      method: "POST",
+      body: JSON.stringify({ decision, comment: comment?.trim() || null }),
+    }),
+
+  /** Audit events visible to the org, oldest first. */
+  auditEvents: (orgId: string) => apiFetch<AuditEvent[]>("/audit-events", orgId),
+
+  /** Clear proposals, audit events and scan caches. */
+  resetDemo: () => apiFetch<{ status: string }>("/demo/reset", null, { method: "POST" }),
 };

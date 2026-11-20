@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ResetDemoButton from "@/components/ResetDemoButton";
 import { shortOrgName, useOrg } from "@/lib/org-context";
 
 const NAV = [
@@ -48,25 +49,28 @@ export default function Header() {
           })}
         </nav>
 
-        <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
-          <span>Viewing as</span>
-          <select
-            value={orgId}
-            onChange={(e) => setOrgId(e.target.value)}
-            disabled={loading || !!error || organizations.length === 0}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 disabled:opacity-60"
-          >
-            {organizations.length === 0 ? (
-              <option value={orgId}>{loading ? "Loading…" : "Unavailable"}</option>
-            ) : (
-              organizations.map((o) => (
-                <option key={o.id} value={o.id} title={o.name}>
-                  {shortOrgName(o)}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <span>Viewing as</span>
+            <select
+              value={orgId}
+              onChange={(e) => setOrgId(e.target.value)}
+              disabled={loading || !!error || organizations.length === 0}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 disabled:opacity-60"
+            >
+              {organizations.length === 0 ? (
+                <option value={orgId}>{loading ? "Loading…" : "Unavailable"}</option>
+              ) : (
+                organizations.map((o) => (
+                  <option key={o.id} value={o.id} title={o.name}>
+                    {shortOrgName(o)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          <ResetDemoButton />
+        </div>
       </div>
     </header>
   );

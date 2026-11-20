@@ -123,6 +123,16 @@ export interface Decision {
   decided_at: string;
 }
 
+export interface AuditEvent {
+  id: string;
+  org_id: string | null;
+  actor: "agent" | "user";
+  event_type: string;
+  entity: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface Proposal {
   id: string;
   opportunity_id: string;

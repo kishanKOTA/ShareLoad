@@ -20,7 +20,7 @@ const RouteMap = dynamic(() => import("@/components/opportunity/RouteMap"), {
 
 export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { orgId } = useOrg();
+  const { orgId, dataVersion } = useOrg();
   const [opp, setOpp] = useState<Opportunity | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +44,7 @@ export default function OpportunityDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, orgId]);
+  }, [id, orgId, dataVersion]);
 
   const back = (
     <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">
