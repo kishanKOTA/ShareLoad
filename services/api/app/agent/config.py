@@ -1,10 +1,12 @@
-"""Agent configuration: the Gemini API key, read from the repo-root ``.env``.
+"""Agent configuration: Gemini API key and model, read from the repo-root ``.env``.
 
 A missing or blank ``GEMINI_API_KEY`` is not an error. The agent then runs in
 template mode: no Gemini calls, and the explanation comes from a fixed template
 built only from tool outputs. ``get_gemini_client()`` returns ``None`` in that
 case (and also if the client can't be created), so callers branch on it instead
 of catching exceptions.
+
+``GEMINI_MODEL`` picks the model; it defaults to a fast Flash model.
 
 Variables already set in the process environment win over ``.env``.
 """
@@ -24,10 +26,15 @@ log = logging.getLogger(__name__)
 
 ENV_PATH = Path(__file__).resolve().parents[4] / ".env"
 
+# Alias that tracks Google's current Flash model; pin a version in .env for a
+# frozen demo (e.g. GEMINI_MODEL=gemini-2.5-flash).
+DEFAULT_GEMINI_MODEL = "gemini-flash-latest"
+
 
 @dataclass(frozen=True)
 class AgentConfig:
     gemini_api_key: str | None
+    gemini_model: str = DEFAULT_GEMINI_MODEL
 
     @property
     def use_gemini(self) -> bool:
@@ -44,7 +51,8 @@ def get_config() -> AgentConfig:
     key = (os.environ.get("GEMINI_API_KEY") or "").strip() or None
     if key is None:
         log.warning("GEMINI_API_KEY not set; agent will use template mode")
-    return AgentConfig(gemini_api_key=key)
+    model = (os.environ.get("GEMINI_MODEL") or "").strip() or DEFAULT_GEMINI_MODEL
+    return AgentConfig(gemini_api_key=key, gemini_model=model)
 
 
 @lru_cache(maxsize=1)

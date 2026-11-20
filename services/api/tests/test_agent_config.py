@@ -8,6 +8,7 @@ def isolated_env(monkeypatch, tmp_path):
     # Point at an empty .env so a developer's real key never leaks into tests.
     monkeypatch.setattr(agent_config, "ENV_PATH", tmp_path / ".env")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     agent_config.reset_config_cache()
     yield
     agent_config.reset_config_cache()
@@ -42,3 +43,12 @@ def test_client_init_failure_degrades_to_template(monkeypatch):
 
     monkeypatch.setattr(genai, "Client", boom)
     assert agent_config.get_gemini_client() is None
+
+
+def test_model_defaults_to_fast_flash():
+    assert agent_config.get_config().gemini_model == agent_config.DEFAULT_GEMINI_MODEL
+
+
+def test_model_read_from_dotenv_file(tmp_path):
+    (tmp_path / ".env").write_text("GEMINI_MODEL=gemini-2.5-flash\n", encoding="utf-8")
+    assert agent_config.get_config().gemini_model == "gemini-2.5-flash"
