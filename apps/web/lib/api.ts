@@ -1,4 +1,4 @@
-import type { Organization } from "./types";
+import type { AgentScanResult, Organization } from "./types";
 
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -47,4 +47,12 @@ export async function apiFetch<T>(
 export const api = {
   organizations: (orgId?: string | null) =>
     apiFetch<Organization[]>("/organizations", orgId),
+
+  /** Run the agent scan. `useCached` returns the last saved Gemini run if the data is unchanged. */
+  scan: (orgId: string | null, useCached: boolean) =>
+    apiFetch<AgentScanResult>(
+      `/opportunities/scan?use_cached=${useCached ? "true" : "false"}`,
+      orgId,
+      { method: "POST" },
+    ),
 };
