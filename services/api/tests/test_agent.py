@@ -15,7 +15,7 @@ REEFER = "opp-trip-a-return-ship-b-reefer"
 LATE = "opp-trip-a-return-ship-b-late"
 
 GOOD_EXPLANATIONS = {
-    MATCH: "Fits: 1,200 kg needed, 4,500 kg available, detour 6.1 km. Potential 361.0 kg CO2 "
+    MATCH: "Fits: 1,200 kg needed, 4,500 kg available, detour 6.1 km. Potential 323.6 kg CO2 "
            "avoided (estimate). Breaks if pickup slips past 12:00.",
     REEFER: "Rejected: needs refrigerated (2 to 6 °C) but the truck is ambient only.",
     LATE: "Rejected: pickup window 15:00–17:00 opens after the truck leaves.",
@@ -23,7 +23,7 @@ GOOD_EXPLANATIONS = {
 
 
 GOOD_SUMMARY = ("Checked 3 pairs: 1 feasible, 2 rejected. The best match saves 461.0 km, "
-                "133.7 L of fuel and a potential 361.0 kg CO2 avoided (estimate).")
+                "119.9 L of fuel and a potential 323.6 kg CO2 avoided (estimate).")
 
 
 def call(name, **args):
@@ -145,11 +145,11 @@ def test_template_mode_without_gemini():
 
     opps = all_opportunities(result)
     assert all(o.explanation for o in opps.values())
-    assert "361.0 kg CO2" in opps[MATCH].explanation
+    assert "323.6 kg CO2" in opps[MATCH].explanation
     assert "CARGO_TEMP_UNSUPPORTED" in opps[REEFER].explanation
     assert "TIME_WINDOW_CONFLICT" in opps[LATE].explanation
     assert "1 feasible, 2 rejected" in result.agent_summary
-    for number in ("461.0 vehicle-km", "133.7 L of fuel", "361.0 kg CO2"):
+    for number in ("461.0 vehicle-km", "119.9 L of fuel", "323.6 kg CO2"):
         assert number in result.agent_summary
     assert result.template_summary is True
     assert set(result.template_explanations) == {MATCH, REEFER, LATE}
@@ -242,14 +242,14 @@ def test_result_is_json_safe():
     [
         ("1,200 kg needed, CO2 down", True),
         ("2-6 °C cargo", True),
-        ("saves 361.0 kg", True),
-        ("saves 361 kg", True),  # same value, different formatting
+        ("saves 323.6 kg", True),
+        ("saves 1200 kg", True),  # same value as 1,200, different formatting
         ("about 49%", False),    # rounded from 48.8
         ("8 m3 load", True),     # unit digit isn't a number
     ],
 )
 def test_grounding(text, ok):
-    allowed = {1200.0, 2.0, 6.0, 361.0, 48.8, 8.0}
+    allowed = {1200.0, 2.0, 6.0, 323.6, 48.8, 8.0}
     assert agent_mod._grounded(text, allowed) is ok
 
 
@@ -318,8 +318,8 @@ def test_explain_facts_include_best_match():
     run_agent_scan(client=client)
     facts = json.loads(client.models.explain_prompts[0].split("Scan facts:\n", 1)[1])
     assert facts["best_match"] == {
-        "opportunity_id": MATCH, "distance_km": 461.0, "fuel_l": 133.7,
-        "co2_kg": 361.0, "reduction_pct": 48.8,
+        "opportunity_id": MATCH, "distance_km": 461.0, "fuel_l": 119.9,
+        "co2_kg": 323.6, "reduction_pct": 48.8,
     }
 
 
@@ -327,15 +327,15 @@ def test_explain_facts_include_best_match():
     "summary",
     [
         "Checked 3 pairs: 1 feasible, 2 rejected.",                                  # no savings
-        "Best match saves 461.0 km and a potential 361.0 kg CO2 avoided (estimate).",  # no fuel
-        "Best match saves 461.0 km and 133.7 L of fuel.",                            # no CO2
+        "Best match saves 461.0 km and a potential 323.6 kg CO2 avoided (estimate).",  # no fuel
+        "Best match saves 461.0 km and 119.9 L of fuel.",                            # no CO2
     ],
 )
 def test_summary_missing_best_match_savings_uses_template(summary):
     result = run_agent_scan(client=fake_client(summary=summary))
     assert result.template_summary is True
     assert result.agent_summary != summary
-    for number in ("461.0", "133.7", "361.0"):
+    for number in ("461.0", "119.9", "323.6"):
         assert number in result.agent_summary
 
 
@@ -347,7 +347,7 @@ def test_summary_with_savings_but_invented_number_uses_template():
 
 
 def test_summary_accepts_reformatted_savings():
-    summary = "Best match saves 461 km, 133.7 L fuel and potentially 361 kg CO2 (estimate)."
+    summary = "Best match saves 461 km, 119.9 L fuel and potentially 323.6 kg CO2 (estimate)."
     result = run_agent_scan(client=fake_client(summary=summary))
     assert result.template_summary is False
     assert result.agent_summary == summary

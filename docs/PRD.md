@@ -58,15 +58,15 @@ One Madison ↔ Chicago lane, two fictional businesses, one feasible match and t
 
 **Baseline decision (locked):** without ShareLoad, Business B hires a Chicago-based truck that drives Chicago → Madison and back empty. With ShareLoad, B's trip is fully avoided and A adds a small pickup detour in Chicago.
 
-**Working numbers** (cached OSRM distances, `data/demo/routes.geojson`; factors from `data/demo/assumptions.json`, citations still TODO):
+**Working numbers** (cached OSRM distances, `data/demo/routes.geojson`; factors from `data/demo/assumptions.json` v2, cited in `docs/calculation-methodology.md`):
 
 | Scenario | Vehicle-km | Fuel (L) | CO₂ (kg) |
 | --- | --- | --- | --- |
-| Baseline: A round trip 236.4 + 240.5 + B round trip 467.1 | 944.0 | 273.8 | 739.2 |
-| Shared: A outbound 236.4 + return via Lakeview pickup 246.6 (6.1 km detour) | 483.0 | 140.1 | 378.2 |
-| **Net saving** | **461.0 (49%)** | **133.7** | **361.0** |
+| Baseline: A round trip 236.4 + 240.5 + B round trip 467.1 | 944.0 | 245.4 | 662.7 |
+| Shared: A outbound 236.4 + return via Lakeview pickup 246.6 (6.1 km detour) | 483.0 | 125.6 | 339.1 |
+| **Net saving** | **461.0 (48.8%)** | **119.9** | **323.6** |
 
-Assumes 29 L/100 km (about 8 mpg box truck) and 2.70 kg CO₂ per litre of diesel. Both must be cited in `docs/calculation-methodology.md` before we show them.
+Assumes 26 L/100 km (US box-truck average, 9.05 mpg; DOE FOTW #1342 from the 2021 VIUS), 2.70 kg CO₂ per litre of diesel (EPA GHG Emission Factors Hub 2025) and $1.57/L diesel (EIA, week of Nov 16, 2026). Sources are in `docs/calculation-methodology.md`.
 
 ## Scope
 
@@ -194,7 +194,7 @@ Reason codes: `CAPACITY_WEIGHT_EXCEEDED`, `CAPACITY_VOLUME_EXCEEDED`, `CARGO_TEM
 We compare total vehicle-km across both businesses under the same assumptions. Savings come from avoiding B's separate round trip, not from A's return leg, which is still driven.
 
 - Fuel (L) = km × (L/100 km) ÷ 100
-- CO₂ (kg) = Fuel × 2.70 kg/L (diesel; source to be cited)
+- CO₂ (kg) = Fuel × 2.70 kg/L (diesel, tank-to-wheel; EPA GHG Emission Factors Hub 2025)
 - Cost = Fuel × price per litre
 - Net saved = Baseline − Shared; % reduction = (Baseline − Shared) ÷ Baseline × 100
 - **Baseline** = A's outbound + return, plus B's hired truck Chicago → Madison → Chicago.
@@ -204,7 +204,7 @@ We compare total vehicle-km across both businesses under the same assumptions. S
 - UI wording: "potential CO₂ avoided (estimate)". Never "measured" or "guaranteed".
 - A negative result is shown in neutral color with "not recommended".
 
-**Open items:** cite the diesel CO₂ factor source (EPA) and the box-truck fuel rate source; pick a fuel price and its date; store all of this in `assumptions.json` with a version.
+**Resolved (Nov 20):** the fuel rate, diesel CO₂ factor and fuel price are cited with dates in `assumptions.json` (version v2) and `docs/calculation-methodology.md`. The max detour (30 km) is a product setting, not a sourced value.
 
 ## Who owns what
 

@@ -16,7 +16,7 @@ def test_demo_scan_finds_one_match_and_rejects_two():
     assert match.trip_id == "trip-a-return"
     assert match.baseline.distance_km == 944.0
     assert match.shared.distance_km == 483.0
-    assert match.impact.net_saved.co2_kg == 361.0
+    assert match.impact.net_saved.co2_kg == 323.6
     assert match.impact.recommended
 
     rejected = {o.shipment_id: o.reason_codes for o in scan.rejected}

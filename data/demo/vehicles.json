@@ -6,6 +6,6 @@
     "payload_kg": 4500,
     "volume_m3": 30,
     "capabilities": ["ambient"],
-    "fuel_l_per_100km": 29
+    "fuel_l_per_100km": 26
   }
 ]

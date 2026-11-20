@@ -23,7 +23,7 @@ def window(start: str, end: str) -> dict:
 def test_demo_vehicle_and_return_trip_validate():
     vehicle = Vehicle(
         id="veh-a", org_id="northstar", type="box_truck", payload_kg=4500,
-        volume_m3=30, capabilities=["ambient"], fuel_l_per_100km=29,
+        volume_m3=30, capabilities=["ambient"], fuel_l_per_100km=26,
     )
     assert vehicle.can_carry(CargoType.AMBIENT)
     assert not vehicle.can_carry(CargoType.REFRIGERATED)

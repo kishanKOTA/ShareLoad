@@ -1,7 +1,5 @@
 # ShareLoad
 
-**An AI agent that finds unused truck capacity across businesses, checks the match is feasible, and shows the fuel, cost and CO₂ saved before both companies approve.**
-
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
@@ -35,9 +33,9 @@ The scan checks 3 candidates and finds 1 feasible match: NorthStar's return trip
 | | Baseline (separate trucks) | Shared (one truck) | Saved |
 | --- | ---: | ---: | ---: |
 | Vehicle distance | 944.0 km | 483.0 km | **461.0 km (48.8%)** |
-| Fuel | 273.8 L | 140.1 L | **133.7 L** |
-| CO₂ (estimate) | 739.2 kg | 378.2 kg | **361.0 kg** |
-| Fuel cost | $268.28 | $137.27 | **$131.02** |
+| Fuel | 245.4 L | 125.6 L | **119.9 L** |
+| CO₂ (estimate) | 662.7 kg | 339.1 kg | **323.6 kg** |
+| Fuel cost | $385.34 | $197.16 | **$188.18** |
 
 The other two candidates are rejected, and the app says why in plain words:
 
@@ -46,7 +44,7 @@ The other two candidates are rejected, and the app says why in plain words:
 | Refrigerated shipment to a grocery co-op | `CARGO_TEMP_UNSUPPORTED` | Needs 2 to 6 °C; NorthStar's truck carries ambient cargo only |
 | Same load with a late pickup | `TIME_WINDOW_CONFLICT` | Truck can arrive 11:07–14:07; the pickup window is 15:00–17:00 |
 
-The numbers come straight from the code and fixtures (`data/demo/`) and are checked by the test suite.
+The numbers come straight from the code and fixtures (`data/demo/`, assumptions v2) and are checked by the test suite. The worked example is in [docs/calculation-methodology.md](docs/calculation-methodology.md).
 
 ## Screenshots
 
@@ -130,20 +128,20 @@ We compare **total vehicle distance across both businesses** under the same assu
 - Net saved = baseline − shared; % reduction = net distance ÷ baseline distance × 100
 - A negative result is shown in a neutral colour as "not recommended".
 
-**Assumptions** (`data/demo/assumptions.json`, version `v1`)
+**Assumptions** (`data/demo/assumptions.json`, version `v2`; sources opened 2026-11-20)
 
-| Assumption | Value | Note | Source |
+| Assumption | Value | Derived from | Source |
 | --- | --- | --- | --- |
-| Fuel use | 29 L/100 km | Box truck, about 8 mpg; one rate for loaded and empty running | TODO: cite |
-| CO₂ per litre | 2.70 kg CO₂/L | Diesel combustion (tank-to-wheel) | TODO: cite |
-| Fuel price | $0.98/L | US on-highway diesel, about $3.70/gal | TODO: cite |
-| Max detour | 30 km | Extra distance the carrier's truck may add | TODO: cite |
+| Fuel use | 26 L/100 km | US box-truck average of 9.05 mpg (2021); one rate for loaded and empty running | [U.S. DOE, Fact of the Week #1342](https://www.energy.gov/cmei/vehicles/articles/fotw-1342-may-13-2024-average-road-fuel-economy-mediumheavy-trucks-ranged-40) ([dataset](https://www.energy.gov/sites/default/files/2024-05/FOTW_1342_web.xlsx)), from the 2021 Vehicle Inventory and Use Survey |
+| CO₂ per litre | 2.70 kg CO₂/L | Diesel 10.21 kg CO₂/gal, combustion only (tank-to-wheel) | [U.S. EPA, GHG Emission Factors Hub 2025](https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf), Table 2 |
+| Fuel price | $1.57/L | US on-highway diesel $5.937/gal, week of Nov 16, 2026 | [U.S. EIA, Gasoline and Diesel Fuel Update](https://www.eia.gov/petroleum/gasdiesel/) |
+| Max detour | 30 km | Extra distance the carrier's truck may add | Product setting |
 
-Sources are not cited yet; this is being worked on. Routes are real road distances from OSRM (OpenStreetMap), cached on 2026-11-18.
+Routes are real road distances from OSRM (OpenStreetMap), cached on 2026-11-18.
 
-**Not included:** driver time, tolls, loading and handling, insurance, contract charges, and the difference between loaded and empty fuel use.
+**Not included:** upstream (well-to-tank) emissions, other greenhouse gases, driver time, tolls, loading and handling, insurance, contract charges, and the difference between loaded and empty fuel use.
 
-The full method is in [docs/PRD.md › Impact methodology](docs/PRD.md#impact-methodology). A separate `docs/calculation-methodology.md` is planned and not yet written.
+The full method, including the system boundary, a worked example and limitations, is in **[docs/calculation-methodology.md](docs/calculation-methodology.md)**.
 
 ## Run it locally
 
@@ -252,7 +250,7 @@ The web app was checked by hand and with scripted browser runs; `npx tsc --noEmi
 - **Cached routes.** Road distances and geometry come from OSRM and were cached on 2026-11-18. Nothing is routed live.
 - **No live integrations.** No TMS, telematics, email inbox or payment systems. Extracted shipments are shown, not saved.
 - **No dispatch or booking.** ShareLoad stops at "Approved for external coordination". The companies arrange the pickup themselves.
-- **Estimates, not measurements.** CO₂ is "potential CO₂ avoided (estimate)", based on one fuel rate for loaded and empty running and the assumptions above. Sources are not cited yet.
+- **Estimates, not measurements.** CO₂ is "potential CO₂ avoided (estimate)", based on a national-average fuel rate used for loaded and empty running, and one week's national diesel price.
 - **Demo-grade state and auth.** Proposals and the audit log are in memory and reset when the API restarts. `X-Org-Id` stands in for real authentication.
 
 ## What we learned
@@ -265,7 +263,7 @@ The web app was checked by hand and with scripted browser runs; `npx tsc --noEmi
 
 ## What's next
 
-- Cite sources for the fuel rate, CO₂ factor and fuel price, and write `docs/calculation-methodology.md`.
+- Use each truck's own fuel rate and regional fuel prices instead of national averages.
 - Live routing and more than one match per truck (multi-stop, partial loads).
 - Persistent storage and real sign-in in place of `X-Org-Id`.
 - Save extracted shipments directly into the scan, and connect real sources such as a shared inbox or a TMS.

@@ -39,8 +39,8 @@ def test_evaluate_routes_has_no_geometry(tools):
 
 def test_calculate_impact_matches_prd(tools):
     result = tools.calculate_impact("trip-a-return", "ship-b")
-    assert result["net_saved"]["co2_kg"] == 361.0
-    assert result["net_saved"]["fuel_l"] == 133.7
+    assert result["net_saved"]["co2_kg"] == 323.6
+    assert result["net_saved"]["fuel_l"] == 119.9
     assert result["recommended"] is True
     assert result["formula_trace"]
 
@@ -77,7 +77,7 @@ def test_every_call_is_logged(tools):
         "summary": "infeasible: CARGO_TEMP_UNSUPPORTED",
     }
     assert tools.tool_calls[2]["args"] == {"trip_id": "trip-a-return", "shipment_id": "ship-b"}
-    assert tools.tool_calls[3]["summary"] == "saves 461.0 km (48.8%), 361.0 kg CO2"
+    assert tools.tool_calls[3]["summary"] == "saves 461.0 km (48.8%), 323.6 kg CO2"
 
 
 def test_call_logs_are_per_instance():

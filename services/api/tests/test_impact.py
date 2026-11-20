@@ -16,31 +16,31 @@ def assumptions() -> dict:
 def test_demo_numbers_match_prd(assumptions):
     impact = calculate_impact(944.0, 483.0, assumptions)
     assert impact.baseline.model_dump() == {
-        "distance_km": 944.0, "fuel_l": 273.8, "co2_kg": 739.2, "cost_usd": 268.28,
+        "distance_km": 944.0, "fuel_l": 245.4, "co2_kg": 662.7, "cost_usd": 385.34,
     }
     assert impact.shared.model_dump() == {
-        "distance_km": 483.0, "fuel_l": 140.1, "co2_kg": 378.2, "cost_usd": 137.27,
+        "distance_km": 483.0, "fuel_l": 125.6, "co2_kg": 339.1, "cost_usd": 197.16,
     }
     assert impact.net_saved.model_dump() == {
-        "distance_km": 461.0, "fuel_l": 133.7, "co2_kg": 361.0, "cost_usd": 131.02,
+        "distance_km": 461.0, "fuel_l": 119.9, "co2_kg": 323.6, "cost_usd": 188.18,
     }
     assert impact.reduction_pct == 48.8
     assert impact.recommended
-    assert impact.assumptions_version == "v1"
+    assert impact.assumptions_version == "v2"
 
 
 def test_formula_trace(assumptions):
     trace = {s.label: s for s in calculate_impact(944.0, 483.0, assumptions).formula_trace}
-    assert trace["Baseline fuel"].formula == "944.0 km × 29 L/100 km ÷ 100"
-    assert trace["Baseline fuel"].value == 273.8
-    assert trace["Net CO₂ avoided"].value == 361.0
+    assert trace["Baseline fuel"].formula == "944.0 km × 26 L/100 km ÷ 100"
+    assert trace["Baseline fuel"].value == 245.4
+    assert trace["Net CO₂ avoided"].value == 323.6
     assert trace["Reduction"].unit == "%"
 
 
 def test_negative_saving_allowed(assumptions):
     impact = calculate_impact(100.0, 150.0, assumptions)
     assert impact.net_saved.distance_km == -50.0
-    assert impact.net_saved.fuel_l == -14.5
+    assert impact.net_saved.fuel_l == -13.0
     assert impact.net_saved.co2_kg < 0
     assert impact.reduction_pct == -50.0
     assert not impact.recommended

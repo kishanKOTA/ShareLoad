@@ -51,7 +51,7 @@ class FormulaStep(ContractModel):
     """One line of the formula trace behind an impact number."""
 
     label: str = Field(examples=["Baseline fuel"])
-    formula: str = Field(examples=["960 km × 29 L/100 km ÷ 100"])
+    formula: str = Field(examples=["960 km × 26 L/100 km ÷ 100"])
     value: float
     unit: str = Field(examples=["L"])
 

@@ -1,27 +1,33 @@
 {
-  "version": "v1",
+  "version": "v2",
   "fuel_l_per_100km": {
-    "value": 29,
+    "value": 26.0,
     "unit": "L/100km",
-    "note": "Box truck, about 8 mpg; single rate for loaded and empty running",
-    "source": "TODO: cite"
+    "note": "Average on-road fuel economy of US box trucks: 9.05 mpg (2021). 235.2 / 9.05 mpg = 26.0 L/100 km. Single rate for loaded and empty running.",
+    "source": "U.S. DOE Vehicle Technologies Office, Fact of the Week #1342 (May 13, 2024), dataset 'Average On-Road Fuel Economy by Truck Body Type, 2021', from the 2021 Vehicle Inventory and Use Survey (BTS/Census)",
+    "source_url": "https://www.energy.gov/sites/default/files/2024-05/FOTW_1342_web.xlsx",
+    "accessed": "2026-11-20"
   },
   "co2_kg_per_l": {
-    "value": 2.70,
+    "value": 2.7,
     "unit": "kg CO2/L",
-    "note": "Diesel combustion (tank-to-wheel)",
-    "source": "TODO: cite"
+    "note": "Diesel fuel 10.21 kg CO2 per gallon; 10.21 / 3.785 L per gal = 2.697 kg/L. Combustion only (tank-to-wheel), no upstream emissions.",
+    "source": "U.S. EPA, GHG Emission Factors Hub 2025, Table 2 (Mobile Combustion CO2), last modified 15 January 2025",
+    "source_url": "https://www.epa.gov/system/files/documents/2025-01/ghg-emission-factors-hub-2025.pdf",
+    "accessed": "2026-11-20"
   },
   "fuel_price_usd_per_l": {
-    "value": 0.98,
+    "value": 1.57,
     "unit": "USD/L",
-    "note": "US on-highway diesel, about $3.70/gal",
-    "source": "TODO: cite"
+    "note": "US average on-highway diesel retail price $5.937/gal for the week of 2026-11-16; 5.937 / 3.785 L per gal = $1.57/L.",
+    "source": "U.S. EIA, Gasoline and Diesel Fuel Update, U.S. On-Highway Diesel Fuel Prices (released 2026-11-17)",
+    "source_url": "https://www.eia.gov/petroleum/gasdiesel/",
+    "accessed": "2026-11-20"
   },
   "max_detour_km": {
     "value": 30,
     "unit": "km",
     "note": "Extra distance the carrier's truck may add to pick up a shared load",
-    "source": "TODO: cite"
+    "source": "Product setting"
   }
 }
