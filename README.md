@@ -228,7 +228,7 @@ cd services/api
 python -m pytest -q
 ```
 
-**141 tests pass** (about 30 s). They don't need a Gemini key or network: Gemini is replaced with fakes.
+**142 tests pass** (about 30 s). They don't need a Gemini key or network: Gemini is replaced with fakes.
 
 | Area | What is covered |
 | --- | --- |

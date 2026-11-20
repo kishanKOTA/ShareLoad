@@ -46,6 +46,7 @@ We compare **total vehicle distance across both businesses** for the same day, t
 
 - The same fuel rate is used for loaded and empty running.
 - Values are calculated unrounded and rounded only for display: km, L and kg to 0.1, $ to 0.01, % to 0.1. So a displayed net value can differ by 0.1 from subtracting the displayed baseline and shared values.
+- The app's formula trace shows each input that is an earlier result (fuel, CO₂, cost, net distance) to 2 decimals, so the arithmetic visibly adds up, for example "245.44 L − 125.58 L = 119.9 L". Distances from the route data stay at 1 decimal.
 - If the shared plan is longer than the baseline, net saved is negative. The app shows it in a neutral colour as "not recommended".
 
 ## 4. Assumptions and sources
@@ -102,6 +103,22 @@ The engine carries unrounded fuel into the CO₂ and cost steps:
 | Fuel cost | $385.34 | $197.16 | **$188.18** |
 
 Fuel saved is 119.9 L, not 245.4 − 125.6 = 119.8 L, because the engine subtracts unrounded values (245.44 − 125.58 = 119.86 L). See section 3.
+
+The app's formula trace for this example:
+
+| Step | Formula | Result |
+| --- | --- | ---: |
+| Baseline fuel | 944.0 km × 26 L/100 km ÷ 100 | 245.4 L |
+| Baseline CO₂ | 245.44 L × 2.7 kg/L | 662.7 kg |
+| Baseline cost | 245.44 L × $1.57/L | $385.34 |
+| Shared fuel | 483.0 km × 26 L/100 km ÷ 100 | 125.6 L |
+| Shared CO₂ | 125.58 L × 2.7 kg/L | 339.1 kg |
+| Shared cost | 125.58 L × $1.57/L | $197.16 |
+| Net distance saved | 944.0 km − 483.0 km | 461.0 km |
+| Net fuel saved | 245.44 L − 125.58 L | 119.9 L |
+| Net CO₂ avoided | 662.69 kg − 339.07 kg | 323.6 kg |
+| Net cost saved | $385.34 − $197.16 | $188.18 |
+| Reduction | 461.00 km ÷ 944.00 km × 100 | 48.8% |
 
 ## 6. Limitations
 

@@ -37,6 +37,24 @@ def test_formula_trace(assumptions):
     assert trace["Reduction"].unit == "%"
 
 
+def test_formula_trace_shows_prior_results_to_two_decimals(assumptions):
+    """Inputs that are earlier results keep 2 decimals so the arithmetic adds up."""
+    trace = {s.label: s for s in calculate_impact(944.0, 483.0, assumptions).formula_trace}
+    expected = {
+        "Baseline CO₂": "245.44 L × 2.7 kg/L",
+        "Baseline cost": "245.44 L × $1.57/L",
+        "Shared CO₂": "125.58 L × 2.7 kg/L",
+        "Net distance saved": "944.0 km − 483.0 km",  # raw route inputs stay at 1 decimal
+        "Net fuel saved": "245.44 L − 125.58 L",
+        "Net CO₂ avoided": "662.69 kg − 339.07 kg",
+        "Net cost saved": "$385.34 − $197.16",
+        "Reduction": "461.00 km ÷ 944.00 km × 100",
+    }
+    for label, formula in expected.items():
+        assert trace[label].formula == formula, label
+    assert trace["Net fuel saved"].value == 119.9  # 245.44 − 125.58 = 119.86
+
+
 def test_negative_saving_allowed(assumptions):
     impact = calculate_impact(100.0, 150.0, assumptions)
     assert impact.net_saved.distance_km == -50.0

@@ -9,6 +9,8 @@
 One fuel rate covers loaded and empty running (stated simplification).
 Values are computed unrounded and rounded only for output: km, L and kg to
 0.1, USD to 0.01, percent to 0.1.
+In the formula trace, an input that is an earlier result (fuel, CO2, cost,
+net distance) is shown to 2 decimals so the arithmetic visibly adds up.
 """
 
 from __future__ import annotations
@@ -21,6 +23,11 @@ from app.schemas import FormulaStep, Impact, ScenarioMetrics
 def _factor(assumptions: Mapping[str, Any], key: str) -> float:
     entry = assumptions[key]
     return float(entry["value"] if isinstance(entry, Mapping) else entry)
+
+
+def _prior(x: float) -> str:
+    """An earlier, unrounded result used as a formula input, shown to 2 decimals."""
+    return f"{x:,.2f}"
 
 
 def _metrics(km: float, fuel: float, co2: float, cost: float) -> ScenarioMetrics:
@@ -46,9 +53,11 @@ def calculate_impact(baseline_km: float, shared_km: float, assumptions: Mapping[
         trace.extend([
             FormulaStep(label=f"{label} fuel", formula=f"{km:,.1f} km × {rate:g} L/100 km ÷ 100",
                         value=round(fuel, 1), unit="L"),
-            FormulaStep(label=f"{label} CO₂", formula=f"{fuel:,.1f} L × {co2_per_l:g} kg/L",
+            # Inputs that are earlier results are shown to 2 decimals (see _prior),
+            # so the arithmetic visibly matches the rounded value.
+            FormulaStep(label=f"{label} CO₂", formula=f"{_prior(fuel)} L × {co2_per_l:g} kg/L",
                         value=round(co2, 1), unit="kg"),
-            FormulaStep(label=f"{label} cost", formula=f"{fuel:,.1f} L × ${price:g}/L",
+            FormulaStep(label=f"{label} cost", formula=f"{_prior(fuel)} L × ${price:g}/L",
                         value=round(cost, 2), unit="USD"),
         ])
         return fuel, co2, cost
@@ -63,13 +72,13 @@ def calculate_impact(baseline_km: float, shared_km: float, assumptions: Mapping[
     trace.extend([
         FormulaStep(label="Net distance saved", formula=f"{baseline_km:,.1f} km − {shared_km:,.1f} km",
                     value=round(net_km, 1), unit="km"),
-        FormulaStep(label="Net fuel saved", formula=f"{b_fuel:,.1f} L − {s_fuel:,.1f} L",
+        FormulaStep(label="Net fuel saved", formula=f"{_prior(b_fuel)} L − {_prior(s_fuel)} L",
                     value=round(net_fuel, 1), unit="L"),
-        FormulaStep(label="Net CO₂ avoided", formula=f"{b_co2:,.1f} kg − {s_co2:,.1f} kg",
+        FormulaStep(label="Net CO₂ avoided", formula=f"{_prior(b_co2)} kg − {_prior(s_co2)} kg",
                     value=round(net_co2, 1), unit="kg"),
-        FormulaStep(label="Net cost saved", formula=f"${b_cost:,.2f} − ${s_cost:,.2f}",
+        FormulaStep(label="Net cost saved", formula=f"${_prior(b_cost)} − ${_prior(s_cost)}",
                     value=round(net_cost, 2), unit="USD"),
-        FormulaStep(label="Reduction", formula=f"{net_km:,.1f} km ÷ {baseline_km:,.1f} km × 100",
+        FormulaStep(label="Reduction", formula=f"{_prior(net_km)} km ÷ {_prior(baseline_km)} km × 100",
                     value=round(reduction_pct, 1), unit="%"),
     ])
 
