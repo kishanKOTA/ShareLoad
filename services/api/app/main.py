@@ -18,6 +18,10 @@ been run yet.
 Proposals and the audit log live in memory on ``app.state`` (see
 ``app.proposals`` and ``app.audit``). Every proposal route takes ``X-Org-Id``:
 an org sees only proposals it is a party to and the audit events visible to it.
+``POST /ingest/shipments/parse`` (``X-Org-Id`` required) has Gemini turn free
+text into a Shipment for the caller's org; it returns 503 when no Gemini key is
+configured and 502 when Gemini fails or returns bad JSON twice.
+
 ``POST /demo/reset`` clears proposals, audit events and the in-memory scan
 caches. It keeps ``last_agent_scan.json``, so ``use_cached`` still works after
 a reset.
@@ -33,7 +37,14 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agent.agent import AgentScanResult, run_agent_scan
+from app.agent.config import get_gemini_client
 from app.audit import AuditLog
+from app.ingestion import (
+    ExtractionFailed,
+    ExtractionUnavailable,
+    ParseShipmentRequest,
+    extract_shipment,
+)
 from app.matching.scan import DEMO_DIR, clear_scan_cache, get_opportunity, load_demo_data
 from app.proposals import ProposalConflict, ProposalForbidden, ProposalNotFound, ProposalStore
 from app.schemas import (
@@ -236,6 +247,26 @@ def list_audit_events(
     request: Request, org_id: Annotated[str, Depends(_current_org)]
 ) -> list[AuditEvent]:
     return request.app.state.audit.list_for(org_id)
+
+
+@router.post("/ingest/shipments/parse", response_model=Shipment)
+def parse_shipment(
+    body: ParseShipmentRequest,
+    request: Request,
+    org_id: Annotated[str, Depends(_current_org)],
+) -> Shipment:
+    """Gemini extracts a Shipment for the caller's org from free text. Not saved."""
+    client = get_gemini_client() if request.app.state.use_gemini else None
+    try:
+        return extract_shipment(body.raw_text, org_id, client)
+    except ExtractionUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Shipment extraction is unavailable: GEMINI_API_KEY is not set. "
+            "Enter the shipment fields manually.",
+        ) from exc
+    except ExtractionFailed as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/demo/reset")
