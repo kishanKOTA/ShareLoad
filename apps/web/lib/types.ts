@@ -1,5 +1,42 @@
 // Mirrors services/api/app/schemas (see docs/PRD.md "Contracts").
 
+export interface Location {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+export interface TimeWindow {
+  start: string;
+  end: string;
+}
+
+export type CargoType =
+  | "ambient"
+  | "refrigerated"
+  | "frozen"
+  | "hazardous"
+  | "fragile"
+  | "oversized"
+  | "other";
+
+export interface Shipment {
+  id: string;
+  org_id: string;
+  origin: Location | null;
+  destination: Location | null;
+  weight_kg: number | null;
+  volume_m3: number | null;
+  cargo_type: CargoType | null;
+  hazardous: boolean | null;
+  temp_min_c: number | null;
+  temp_max_c: number | null;
+  pickup_window: TimeWindow | null;
+  delivery_window: TimeWindow | null;
+  raw_text: string | null;
+  extraction: { confidence: number; missing_fields: string[] } | null;
+}
+
 export interface Organization {
   id: string;
   name: string;

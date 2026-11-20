@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import EmailExtractionPanel from "@/components/overview/EmailExtractionPanel";
 import OpportunityCard from "@/components/overview/OpportunityCard";
 import RejectedCard from "@/components/overview/RejectedCard";
 import ScanSummary from "@/components/overview/ScanSummary";
@@ -67,6 +68,8 @@ export default function OverviewPage() {
           </button>
         </div>
       </div>
+
+      <EmailExtractionPanel orgId={orgId} />
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">

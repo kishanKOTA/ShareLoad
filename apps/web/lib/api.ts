@@ -1,4 +1,11 @@
-import type { AgentScanResult, AuditEvent, Opportunity, Organization, Proposal } from "./types";
+import type {
+  AgentScanResult,
+  AuditEvent,
+  Opportunity,
+  Organization,
+  Proposal,
+  Shipment,
+} from "./types";
 
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -77,6 +84,17 @@ export const api = {
 
   /** Audit events visible to the org, oldest first. */
   auditEvents: (orgId: string) => apiFetch<AuditEvent[]>("/audit-events", orgId),
+
+  /** The org's own shipments (X-Org-Id must match). */
+  shipments: (orgId: string) =>
+    apiFetch<Shipment[]>(`/organizations/${encodeURIComponent(orgId)}/shipments`, orgId),
+
+  /** Gemini turns free text into a Shipment for the org. Not saved. 503: no key; 502: Gemini failed. */
+  parseShipment: (orgId: string, rawText: string) =>
+    apiFetch<Shipment>("/ingest/shipments/parse", orgId, {
+      method: "POST",
+      body: JSON.stringify({ raw_text: rawText }),
+    }),
 
   /** Clear proposals, audit events and scan caches. */
   resetDemo: () => apiFetch<{ status: string }>("/demo/reset", null, { method: "POST" }),
