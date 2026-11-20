@@ -71,6 +71,17 @@ def _has_spare_capacity(trip: Trip) -> bool:
     return trip.available_kg > 0 and trip.available_m3 > 0
 
 
+def candidate_pairs(data: DemoData) -> list[tuple[Trip, Shipment]]:
+    """Every trip with spare capacity paired with every other org's shipment."""
+    return [
+        (trip, shipment)
+        for trip in data.trips
+        if _has_spare_capacity(trip)
+        for shipment in data.shipments
+        if shipment.org_id != trip.org_id
+    ]
+
+
 def _evaluate(trip: Trip, shipment: Shipment, data: DemoData) -> Opportunity:
     vehicle = data.vehicles.get(trip.vehicle_id)
     if vehicle is None:
@@ -112,13 +123,7 @@ def scan_opportunities(data_dir: Path = DEMO_DIR) -> ScanResult:
 @lru_cache(maxsize=4)
 def _cached_scan(data_dir: Path) -> ScanResult:
     data = load_demo_data(data_dir)
-    candidates = [
-        (trip, shipment)
-        for trip in data.trips
-        if _has_spare_capacity(trip)
-        for shipment in data.shipments
-        if shipment.org_id != trip.org_id
-    ]
+    candidates = candidate_pairs(data)
     evaluated = [_evaluate(trip, shipment, data) for trip, shipment in candidates]
     return ScanResult(
         candidates_considered=len(candidates),
