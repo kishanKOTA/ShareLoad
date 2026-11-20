@@ -108,3 +108,30 @@ export interface AgentScanResult {
   template_summary: boolean;
   cached: boolean;
 }
+
+export type ProposalStatus =
+  | "draft"
+  | "pending_approvals"
+  | "partially_approved"
+  | "approved_for_external_coordination"
+  | "rejected";
+
+export interface Decision {
+  org_id: string;
+  decision: "approve" | "reject";
+  comment: string | null;
+  decided_at: string;
+}
+
+export interface Proposal {
+  id: string;
+  opportunity_id: string;
+  status: ProposalStatus;
+  version: number;
+  snapshot: Opportunity;
+  parties: string[];
+  decisions: Decision[];
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}

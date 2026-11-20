@@ -1,4 +1,4 @@
-import type { AgentScanResult, Organization } from "./types";
+import type { AgentScanResult, Opportunity, Organization, Proposal } from "./types";
 
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -55,4 +55,13 @@ export const api = {
       orgId,
       { method: "POST" },
     ),
+
+  opportunity: (id: string, orgId?: string | null) =>
+    apiFetch<Opportunity>(`/opportunities/${encodeURIComponent(id)}`, orgId),
+
+  /** 403 if the org isn't a party; 409 if not feasible or already proposed. */
+  createProposal: (opportunityId: string, orgId: string) =>
+    apiFetch<Proposal>(`/opportunities/${encodeURIComponent(opportunityId)}/proposals`, orgId, {
+      method: "POST",
+    }),
 };
