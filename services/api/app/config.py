@@ -17,6 +17,10 @@ class Settings:
     gemini_api_key: str | None
     gemini_model: str
     gemini_timeout_ms: int
+    demo_mode: bool
+    environment: str
+    use_gemini: bool
+    runtime_dir: Path
 
 
 def get_config() -> Settings:
@@ -36,11 +40,27 @@ def get_config() -> Settings:
     def path_setting(name: str, default: str) -> Path:
         path = Path(os.getenv(name, default)).expanduser()
         return path if path.is_absolute() else ROOT / path
+    def boolean(name: str, default: str) -> bool:
+        value = os.getenv(name, default).lower().strip()
+        if value not in {"true", "false"}:
+            raise ValueError(f"{name} must be true or false")
+        return value == "true"
+    environment = os.getenv("SHARELOAD_ENV", "development").strip().lower()
+    if environment not in {"development", "test", "demo", "production"}:
+        raise ValueError("SHARELOAD_ENV must be development, test, demo or production")
+    demo_mode = boolean("SHARELOAD_DEMO_MODE", "false")
+    if environment == "production" and demo_mode:
+        raise ValueError("SHARELOAD_DEMO_MODE cannot be enabled in production")
+    database_path = path_setting("SHARELOAD_DATABASE_PATH", "services/api/shareload.db")
     return Settings(
         data_dir=path_setting("SHARELOAD_DATA_DIR", "data/demo"),
-        database_path=path_setting("SHARELOAD_DATABASE_PATH", "services/api/shareload.db"),
+        database_path=database_path,
         cors_origins=origins,
         gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip() or None,
         gemini_model=os.getenv("GEMINI_MODEL", "").strip() or "gemini-flash-latest",
         gemini_timeout_ms=timeout,
+        demo_mode=demo_mode,
+        environment=environment,
+        use_gemini=boolean("SHARELOAD_USE_GEMINI", "true"),
+        runtime_dir=path_setting("SHARELOAD_RUNTIME_DIR", str(database_path.parent / "runtime")),
     )

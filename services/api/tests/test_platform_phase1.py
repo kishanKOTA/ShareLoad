@@ -12,7 +12,7 @@ from app.api.v1.fixtures import FixtureError, load_fixtures
 from app.config import ROOT, get_config
 from app.ingestion.extract import EXTRACT_PROMPT, _to_shipment
 from app.main import create_app
-from app.models.database import initialize_database
+from app.models.database import SCHEMA_VERSION, initialize_database
 from app.schemas import Organization, Shipment, Trip, Vehicle
 
 DEMO = ROOT / "data/demo"
@@ -86,10 +86,10 @@ def test_database_idempotent_and_preserves_existing_rows(tmp_path):
     path = tmp_path / "nested" / "test.db"
     initialize_database(path)
     with sqlite3.connect(path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        assert tables == {"proposals", "proposal_decisions", "audit_events", "audit_visibility"}
-        assert all(connection.execute(f"SELECT count(*) FROM {t}").fetchone()[0] == 0 for t in tables)
+        assert tables == {"proposals", "proposal_decisions", "audit_events", "audit_visibility", "runtime_state"}
+        assert all(connection.execute(f"SELECT count(*) FROM {t}").fetchone()[0] == 0 for t in tables - {"runtime_state"})
         connection.execute("INSERT INTO audit_events VALUES ('e',NULL,'agent','test','test','{}','2026-11-20T00:00:00Z')")
     initialize_database(path)
     with sqlite3.connect(path) as connection:
@@ -101,7 +101,7 @@ def test_database_idempotent_and_preserves_existing_rows(tmp_path):
 
 def test_startup_initializes_database(client):
     with sqlite3.connect(client.app.state.database_path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_environment_config_and_cors(monkeypatch, demo, tmp_path):

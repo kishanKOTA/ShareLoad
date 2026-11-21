@@ -1,0 +1,36 @@
+# Backend only. Repository root is needed for app imports and data/demo.
+services:
+  - type: web
+    name: shareload-api
+    runtime: python
+    plan: starter
+    numInstances: 1
+    buildCommand: pip install -r services/api/requirements.txt
+    startCommand: uvicorn app.main:app --app-dir services/api --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /ready
+    autoDeployTrigger: 'off'
+    disk:
+      name: shareload-state
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.17
+      - key: SHARELOAD_ENV
+        value: production
+      - key: SHARELOAD_DEMO_MODE
+        value: 'false'
+      - key: SHARELOAD_USE_GEMINI
+        value: 'true'
+      - key: SHARELOAD_DATABASE_PATH
+        value: /var/data/shareload.db
+      - key: SHARELOAD_RUNTIME_DIR
+        value: /var/data/runtime
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
+      - key: GEMINI_TIMEOUT_MS
+        value: '30000'
