@@ -1,43 +1,29 @@
-"""HTTP API for the ShareLoad demo, mounted under ``/api/v1``.
+"""ShareLoad platform API.
 
-Run from ``services/api``::
-
-    uvicorn app.main:app --reload
-
-Org-scoped routes (``/organizations/{id}/trips`` and ``/shipments``) need an
-``X-Org-Id`` header naming the caller's organization. An organization can read
-only its own trips and shipments: a header that doesn't match the path id gets
-403, and a missing header gets 422 (FastAPI's standard missing-header error).
-
-``POST /opportunities/scan`` runs the agent scan; ``?use_cached=true`` returns
-the last saved Gemini run when the data hasn't changed. ``GET
-/opportunities/{id}`` serves the opportunity from the most recent scan (so it
-carries the agent's explanation), or from the deterministic scan if no scan has
-been run yet.
-
-Proposals and the audit log live in memory on ``app.state`` (see
-``app.proposals`` and ``app.audit``). Every proposal route takes ``X-Org-Id``:
-an org sees only proposals it is a party to and the audit events visible to it.
-``POST /ingest/shipments/parse`` (``X-Org-Id`` required) has Gemini turn free
-text into a Shipment for the caller's org; it returns 503 when no Gemini key is
-configured and 502 when Gemini fails or returns bad JSON twice.
-
-``POST /demo/reset`` clears proposals, audit events and the in-memory scan
-caches. It keeps ``last_agent_scan.json``, so ``use_cached`` still works after
-a reset.
+Phase 1 adds validated demo reads, extraction and SQLite startup infrastructure.
+Pre-existing scan/proposal/audit/reset routes are retained for compatibility;
+their workflows and persistence are outside this change. X-Org-Id is sample
+workspace context only, never production authentication. See README-phase1.md.
 """
 
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.config import get_config
+from app.api.v1.fixtures import FixtureError, load_fixtures
+from app.api.v1.organizations import router as organization_router
+from app.models.database import initialize_database
 
 from app.agent.agent import AgentScanResult, run_agent_scan
-from app.agent.config import get_gemini_client
+from app.ingestion.provider import get_gemini_client
 from app.audit import AuditLog
 from app.ingestion import (
     ExtractionFailed,
@@ -45,7 +31,7 @@ from app.ingestion import (
     ParseShipmentRequest,
     extract_shipment,
 )
-from app.matching.scan import DEMO_DIR, clear_scan_cache, get_opportunity, load_demo_data
+from app.matching.scan import clear_scan_cache, get_opportunity, load_demo_data
 from app.proposals import ProposalConflict, ProposalForbidden, ProposalNotFound, ProposalStore
 from app.schemas import (
     Actor,
@@ -56,10 +42,7 @@ from app.schemas import (
     Organization,
     Proposal,
     Shipment,
-    Trip,
 )
-
-CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 DECISION_EVENTS = {
     DecisionType.APPROVE: "proposal.approved",
@@ -72,21 +55,7 @@ def _data_dir(request: Request) -> Path:
 
 
 def _load_organizations(data_dir: Path) -> list[Organization]:
-    with open(Path(data_dir) / "organizations.json", encoding="utf-8") as f:
-        return [Organization(**o) for o in json.load(f)]
-
-
-def _authorized_org(
-    org_id: str,
-    data_dir: Annotated[Path, Depends(_data_dir)],
-    x_org_id: Annotated[str, Header()],
-) -> str:
-    """The path org, after checking it exists and matches the caller's X-Org-Id."""
-    if org_id not in {o.id for o in _load_organizations(data_dir)}:
-        raise HTTPException(status_code=404, detail=f"Organization {org_id!r} not found")
-    if x_org_id.strip() != org_id:
-        raise HTTPException(status_code=403, detail="X-Org-Id does not match this organization")
-    return org_id
+    return load_fixtures(data_dir).organizations
 
 
 def _current_org(
@@ -95,6 +64,8 @@ def _current_org(
 ) -> str:
     """The caller's org from X-Org-Id; 403 if it isn't a known organization."""
     org_id = x_org_id.strip()
+    if not org_id:
+        raise HTTPException(status_code=400, detail="X-Org-Id must not be blank")
     if org_id not in {o.id for o in _load_organizations(data_dir)}:
         raise HTTPException(status_code=403, detail=f"Unknown organization {org_id!r}")
     return org_id
@@ -123,27 +94,6 @@ router = APIRouter(prefix="/api/v1")
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-@router.get("/organizations", response_model=list[Organization])
-def list_organizations(data_dir: Annotated[Path, Depends(_data_dir)]) -> list[Organization]:
-    return _load_organizations(data_dir)
-
-
-@router.get("/organizations/{org_id}/trips", response_model=list[Trip])
-def list_trips(
-    org_id: Annotated[str, Depends(_authorized_org)],
-    data_dir: Annotated[Path, Depends(_data_dir)],
-) -> list[Trip]:
-    return [t for t in load_demo_data(data_dir).trips if t.org_id == org_id]
-
-
-@router.get("/organizations/{org_id}/shipments", response_model=list[Shipment])
-def list_shipments(
-    org_id: Annotated[str, Depends(_authorized_org)],
-    data_dir: Annotated[Path, Depends(_data_dir)],
-) -> list[Shipment]:
-    return [s for s in load_demo_data(data_dir).shipments if s.org_id == org_id]
 
 
 @router.post("/opportunities/scan", response_model=AgentScanResult)
@@ -249,16 +199,38 @@ def list_audit_events(
     return request.app.state.audit.list_for(org_id)
 
 
-@router.post("/ingest/shipments/parse", response_model=Shipment)
+@router.post(
+    "/ingest/shipments/parse", response_model=Shipment,
+    responses={
+        422: {"description": "Invalid request, or missing fields when require_complete=true"},
+        502: {"description": "Gemini failed; manual entry required"},
+        503: {"description": "Gemini not configured; manual entry required"},
+    },
+)
 def parse_shipment(
     body: ParseShipmentRequest,
     request: Request,
+    response: Response,
     org_id: Annotated[str, Depends(_current_org)],
+    require_complete: bool = False,
 ) -> Shipment:
     """Gemini extracts a Shipment for the caller's org from free text. Not saved."""
-    client = get_gemini_client() if request.app.state.use_gemini else None
+    client = None
     try:
-        return extract_shipment(body.raw_text, org_id, client)
+        client = get_gemini_client() if request.app.state.use_gemini else None
+        shipment = extract_shipment(body.raw_text, org_id, client)
+        missing = shipment.extraction.missing_fields
+        if missing:
+            errors = [{"field": field, "code": "MISSING_CRITICAL_FIELD"} for field in missing]
+            if require_complete:
+                return JSONResponse(status_code=422, content={
+                    "detail": "Missing critical shipment fields; enter them manually.",
+                    "code": "MISSING_CRITICAL_FIELD", "missing_fields": missing,
+                    "errors": errors, "shipment": shipment.model_dump(mode="json"),
+                })
+            response.headers["X-Shipment-Validation-Errors"] = json.dumps(errors)
+            response.headers["X-Manual-Entry-Required"] = "true"
+        return shipment
     except ExtractionUnavailable as exc:
         raise HTTPException(
             status_code=503,
@@ -266,7 +238,20 @@ def parse_shipment(
             "Enter the shipment fields manually.",
         ) from exc
     except ExtractionFailed as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        # Provider exceptions can include request URLs, raw text or credentials.
+        detail = ("Gemini returned invalid shipment JSON after 2 attempts. "
+                  if exc.kind == "invalid_output" else "Gemini request failed. ")
+        if exc.kind == "quota":
+            detail = "Gemini quota exceeded. "
+        raise HTTPException(status_code=502, detail=detail + "Enter shipment fields manually.") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Gemini request failed. Enter shipment fields manually.") from exc
+    finally:
+        if client is not None and callable(getattr(client, "close", None)):
+            try:
+                client.close()
+            except Exception:
+                pass  # Cleanup must not replace an extraction result or safe API error.
 
 
 @router.post("/demo/reset")
@@ -279,21 +264,46 @@ def reset_demo(request: Request) -> dict[str, str]:
     return {"status": "reset"}
 
 
-def create_app(data_dir: Path = DEMO_DIR, use_gemini: bool = True) -> FastAPI:
-    """Build the app. Tests pass a temp ``data_dir`` and ``use_gemini=False``."""
-    application = FastAPI(title="ShareLoad API", version="1.0.0")
-    application.state.data_dir = Path(data_dir)
+def create_app(data_dir: Path | None = None, use_gemini: bool = True,
+               database_path: Path | None = None) -> FastAPI:
+    """Build the API; fixture validation and SQLite initialization run at startup."""
+    settings = get_config()
+    selected_data_dir = Path(data_dir) if data_dir is not None else settings.data_dir
+    selected_database = Path(database_path) if database_path is not None else settings.database_path
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        application.state.fixtures = load_fixtures(selected_data_dir)
+        initialize_database(selected_database)
+        yield
+
+    application = FastAPI(title="ShareLoad API", version="1.0.0", lifespan=lifespan)
+    application.state.data_dir = selected_data_dir
+    application.state.database_path = selected_database
+    application.state.fixtures = None
     application.state.use_gemini = use_gemini
+    # Pre-existing demo behavior. Phase 1 does not migrate or extend these stores.
     application.state.last_scan = None
     application.state.proposals = ProposalStore()
     application.state.audit = AuditLog()
+
+    @application.exception_handler(FixtureError)
+    async def fixture_error(request: Request, exc: FixtureError):
+        return JSONResponse(status_code=500, content={
+            "detail": "Demo fixtures are invalid. Contact the API operator.",
+            "code": "FIXTURE_VALIDATION_ERROR",
+        })
+
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=list(settings.cors_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Accept", "Content-Type", "X-Org-Id"],
+        expose_headers=["X-Shipment-Validation-Errors", "X-Manual-Entry-Required"],
     )
+    application.add_api_route("/health", health, methods=["GET"])
+    application.include_router(organization_router)
     application.include_router(router)
     return application
 
