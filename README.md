@@ -1,6 +1,6 @@
 # ShareLoad
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google_Gemini-function_calling-8E75B2?logo=googlegemini&logoColor=white)
@@ -68,7 +68,7 @@ Gemini does three jobs. **Python decides feasibility and does all of the math.**
 
 - **Number guardrail.** Every number in Gemini's text must appear in the tool outputs it was given. Any explanation or summary that quotes another number is replaced with a fixed template. The summary must also quote the best match's km, fuel and CO₂ saved exactly.
 - **Template fallback.** With no API key, a Gemini error, or a run where Gemini calls no tools, the agent switches to template mode. The tools run in a fixed order and the scan still completes. The UI shows a "Gemini" or "Template" badge.
-- **Cached run.** Each successful Gemini scan is saved to `data/demo/last_agent_scan.json` with a fingerprint of the input data. "Use cached result" replays it without calling Gemini, as long as the data hasn't changed. This keeps a live demo reliable.
+- **Cached run.** Each successful API Gemini scan is saved under `SHARELOAD_RUNTIME_DIR` (seeded from `data/demo/last_agent_scan.json`) with a fingerprint of the input data. "Use cached result" replays it without calling Gemini, as long as the data hasn't changed. This keeps a live demo reliable.
 
 ## Architecture
 
@@ -81,7 +81,7 @@ flowchart LR
     I["impact<br/>fuel · cost · CO₂"]
     A["agent<br/>tool-calling scan + guardrail"]
     X["ingestion<br/>email → shipment"]
-    P["proposals + audit<br/>in memory"]
+    P["proposals + audit<br/>SQLite"]
     F[("data/demo fixtures<br/>orgs, vehicles, trips, shipments,<br/>cached OSRM routes, assumptions")]
     G(["Google Gemini"])
 
@@ -106,7 +106,7 @@ services/api/
   app/impact/                 fuel, cost and CO₂ engine with formula trace
   app/agent/                  Gemini config, tools, scan and guardrail
   app/ingestion/              Gemini shipment extraction
-  app/proposals/, app/audit/  proposal state machine and audit log (in memory)
+  app/proposals/, app/audit/  transactional SQLite proposal state machine and scoped audit log
   tests/                      pytest suite
 data/demo/                    fixtures, routes.geojson, assumptions.json, last_agent_scan.json
 docs/PRD.md                   product requirements and build plan
@@ -145,7 +145,9 @@ The full method, including the system boundary, a worked example and limitations
 
 ## Run it locally
 
-You need **Python 3.10+**, **Node.js 20+** and, optionally, a Gemini API key. Without a key everything still works in **template mode**: the scan, explanations and proposals run, and email extraction returns a friendly "not available" message.
+Current backend setup, deployment, environment reference and exact demo verification are in [services/api/README-phase2.md](services/api/README-phase2.md). Phase 2 uses Linux/POSIX file locks; on Windows use WSL for the backend.
+
+You need **Python 3.11+**, **Node.js 20+** and, optionally, a Gemini API key. Without a key everything still works in **template mode**: the scan, explanations and proposals run, and email extraction returns a friendly "not available" message.
 
 ### 1. Configure
 
@@ -154,6 +156,8 @@ Create `.env` in the **repo root** (copy `.env.example`):
 ```
 GEMINI_API_KEY=your-key-here
 GEMINI_MODEL=gemini-2.5-flash
+SHARELOAD_ENV=demo
+SHARELOAD_DEMO_MODE=true
 ```
 
 Leave `GEMINI_API_KEY` blank for template mode. `GEMINI_MODEL` is optional and defaults to `gemini-flash-latest`.
@@ -166,21 +170,10 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
 
 > **Windows note:** use `127.0.0.1`, not `localhost`. On Windows, `localhost` can resolve to IPv6 (`::1`) first, while uvicorn listens on IPv4 `127.0.0.1` only, so requests can fail or stall. Without `.env.local`, the web app defaults to `http://localhost:8000/api/v1`.
 
-### 2. Windows (PowerShell)
+### 2. Windows
 
-```powershell
-# API: terminal 1
-cd services\api
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --port 8000
-
-# Web: terminal 2
-cd apps\web
-npm install
-npm run dev
-```
+Run the backend in WSL using the Linux instructions below; its runtime cache
+coordination uses POSIX file locking. The frontend can run on Windows as before.
 
 ### 3. macOS / Linux
 
@@ -198,26 +191,28 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>, choose an organization in the header and click **Run scan**. Use **Reset demo** in the header to clear proposals and the audit log.
+Open <http://localhost:3000>, choose an organization in the header and click **Run scan**. With demo mode explicitly enabled, **Reset demo** restores the seeded workflow and leaves one reset audit event.
 
 ## API endpoints
 
-Base path `/api/v1`. `X-Org-Id` (`northstar` or `lakeview`) stands in for login. Each org sees only its own trips and shipments and the proposals it is a party to.
+Base path `/api/v1`. `X-Org-Id` (`northstar` or `lakeview`) selects a demo workspace and is not production authentication. Each org sees only its own records and opportunities/proposals it participates in.
 
 | Method | Path | X-Org-Id | Returns |
 | --- | --- | --- | --- |
 | GET | `/health` | – | `{"status": "ok"}` |
 | GET | `/organizations` | – | Both demo organizations |
+| GET | `/organizations/{id}/vehicles` | must match `{id}` | That org's vehicles |
 | GET | `/organizations/{id}/trips` | must match `{id}` | That org's trips |
 | GET | `/organizations/{id}/shipments` | must match `{id}` | That org's shipments |
-| POST | `/opportunities/scan?use_cached=true\|false` | – | Candidates considered, opportunities, rejected (with reason codes), agent summary, tool calls, mode |
-| GET | `/opportunities/{id}` | – | Checks, baseline and shared routes (GeoJSON), impact with formula trace, explanation |
+| POST | `/opportunities/scan?use_cached=true\|false` | required | Candidates considered, opportunities, rejected (with reason codes), agent summary, tool calls, mode |
+| GET | `/opportunities/{id}` | required | Checks, baseline and shared routes (GeoJSON), impact with formula trace, explanation |
 | POST | `/opportunities/{id}/proposals` | required | New proposal (`pending_approvals`). 403 if not a party, 409 if not feasible or already proposed |
 | POST | `/proposals/{id}/decision` | required | Updated proposal. Body `{"decision": "approve" or "reject", "comment": "..."}` |
 | GET | `/proposals` | required | Proposals the org is a party to |
 | GET | `/audit-events` | required | Audit events visible to the org, oldest first |
 | POST | `/ingest/shipments/parse` | required | Shipment extracted from `{"raw_text": "..."}`, with confidence and missing fields. 503 without a Gemini key, 502 if Gemini fails |
-| POST | `/demo/reset` | – | Clears proposals, audit events and scan caches |
+| POST | `/demo/reset` | – | Demo guard required; restores seeded state and logs reset |
+| GET | `/ready` | – | SQLite readiness; also available without `/api/v1` |
 
 Interactive docs: <http://127.0.0.1:8000/docs>.
 
@@ -228,7 +223,7 @@ cd services/api
 python -m pytest -q
 ```
 
-**142 tests pass** (about 30 s). They don't need a Gemini key or network: Gemini is replaced with fakes.
+**186 tests pass** (Phase 2 verification). They don't need a Gemini key or network: Gemini is replaced with fakes.
 
 | Area | What is covered |
 | --- | --- |
@@ -251,7 +246,7 @@ The web app was checked by hand and with scripted browser runs; `npx tsc --noEmi
 - **No live integrations.** No TMS, telematics, email inbox or payment systems. Extracted shipments are shown, not saved.
 - **No dispatch or booking.** ShareLoad stops at "Approved for external coordination". The companies arrange the pickup themselves.
 - **Estimates, not measurements.** CO₂ is "potential CO₂ avoided (estimate)", based on a national-average fuel rate used for loaded and empty running, and one week's national diesel price.
-- **Demo-grade state and auth.** Proposals and the audit log are in memory and reset when the API restarts. `X-Org-Id` stands in for real authentication.
+- **Demo workspace context.** Proposals and scoped audit events persist in SQLite across restarts. `X-Org-Id` is not real authentication; this app still serves fictional sample data.
 
 ## What we learned
 
@@ -265,10 +260,12 @@ The web app was checked by hand and with scripted browser runs; `npx tsc --noEmi
 
 - Use each truck's own fuel rate and regional fuel prices instead of national averages.
 - Live routing and more than one match per truck (multi-stop, partial loads).
-- Persistent storage and real sign-in in place of `X-Org-Id`.
+- Real sign-in in place of the demo `X-Org-Id` selector.
 - Save extracted shipments directly into the scan, and connect real sources such as a shared inbox or a TMS.
 
 ## AI tools disclosure
+
+- **OpenAI Codex (development).** Assisted with the Phase 1/2 backend platform, SQLite integration, tests, deployment preparation and documentation. Live Gemini and hosting checks are separate from mocked tests.
 
 - **Google Gemini (in the product).** Chooses which matching tools to call during a scan, writes the scan summary and per-opportunity explanations, and extracts shipment fields from free-text emails. It never decides feasibility or produces numbers on its own: see [How the AI is used](#how-the-ai-is-used).
 - **Claude Code (development).** Used as a coding assistant to write and test most of the code. The team designed the product, the demo scenario and the API contracts, and reviewed every change.

@@ -21,7 +21,7 @@ LAKE = {"X-Org-Id": "lakeview"}     # shipment owner
 def client(tmp_path):
     shutil.copytree(DEMO_DIR, tmp_path / "demo")
     (tmp_path / "demo" / CACHE_FILENAME).unlink(missing_ok=True)
-    yield TestClient(create_app(data_dir=tmp_path / "demo", use_gemini=False))
+    yield TestClient(create_app(data_dir=tmp_path / "demo", database_path=tmp_path / "state.db", use_gemini=False, demo_mode=True))
     clear_scan_cache()
 
 
@@ -57,7 +57,7 @@ def test_create_proposal(client):
 
 
 def test_snapshot_carries_explanation_after_scan(client):
-    client.post("/api/v1/opportunities/scan")
+    client.post("/api/v1/opportunities/scan", headers=NORTH)
     assert propose(client).json()["snapshot"]["explanation"]
 
 
@@ -206,7 +206,7 @@ def test_non_party_cannot_see_or_decide(client, tmp_path):
 
 
 def test_audit_trail_for_full_flow(client):
-    client.post("/api/v1/opportunities/scan")
+    client.post("/api/v1/opportunities/scan", headers=NORTH)
     pid = propose(client).json()["id"]
     decide(client, pid, NORTH, "approve", "ok")
     decide(client, pid, LAKE, "approve")
@@ -244,7 +244,7 @@ def test_reject_is_audited(client):
 
 
 def test_demo_reset_clears_state(client):
-    client.post("/api/v1/opportunities/scan")
+    client.post("/api/v1/opportunities/scan", headers=NORTH)
     pid = propose(client).json()["id"]
     decide(client, pid, NORTH, "approve")
 
@@ -252,8 +252,8 @@ def test_demo_reset_clears_state(client):
     assert r.status_code == 200
     assert r.json() == {"status": "reset"}
     assert client.get("/api/v1/proposals", headers=NORTH).json() == []
-    assert client.get("/api/v1/audit-events", headers=NORTH).json() == []
+    assert [e["event_type"] for e in client.get("/api/v1/audit-events", headers=NORTH).json()] == ["demo.reset"]
     # Last scan is gone, so the opportunity is served without the agent's explanation.
-    assert client.get(f"/api/v1/opportunities/{MATCH}").json()["explanation"] is None
-    # Ids start over and the same opportunity can be proposed again.
-    assert propose(client).json()["id"] == "prop-1"
+    assert client.get(f"/api/v1/opportunities/{MATCH}", headers=NORTH).json()["explanation"] is None
+    # Reset does not reuse IDs: an old request must never target a new proposal.
+    assert propose(client).json()["id"] != pid

@@ -24,7 +24,7 @@ def data_dir(tmp_path):
 
 @pytest.fixture
 def client(data_dir):
-    return TestClient(create_app(data_dir=data_dir, use_gemini=False))
+    return TestClient(create_app(data_dir=data_dir, database_path=data_dir.parent / "state.db", use_gemini=False))
 
 
 def test_health(client):
@@ -80,7 +80,7 @@ def test_unknown_org_is_404(client):
 
 
 def test_scan_runs_template_mode(client):
-    r = client.post("/api/v1/opportunities/scan")
+    r = client.post("/api/v1/opportunities/scan", headers={"X-Org-Id": "northstar"})
     assert r.status_code == 200
     body = r.json()
     assert body["mode"] == "template"
@@ -102,13 +102,13 @@ def test_scan_passes_use_cached(client, monkeypatch, query, expected):
         return real(**kwargs)
 
     monkeypatch.setattr(main_mod, "run_agent_scan", spy)
-    assert client.post(f"/api/v1/opportunities/scan{query}").status_code == 200
+    assert client.post(f"/api/v1/opportunities/scan{query}", headers={"X-Org-Id": "northstar"}).status_code == 200
     assert seen["use_cached"] is expected
     assert seen["use_gemini"] is False
 
 
 def test_get_opportunity_before_scan(client):
-    r = client.get(f"/api/v1/opportunities/{MATCH}")
+    r = client.get(f"/api/v1/opportunities/{MATCH}", headers={"X-Org-Id": "northstar"})
     assert r.status_code == 200
     body = r.json()
     assert body["id"] == MATCH
@@ -117,15 +117,15 @@ def test_get_opportunity_before_scan(client):
 
 
 def test_get_opportunity_after_scan_has_explanation(client):
-    client.post("/api/v1/opportunities/scan")
+    client.post("/api/v1/opportunities/scan", headers={"X-Org-Id": "northstar"})
     for opp_id in (MATCH, REEFER):
-        r = client.get(f"/api/v1/opportunities/{opp_id}")
+        r = client.get(f"/api/v1/opportunities/{opp_id}", headers={"X-Org-Id": "northstar"})
         assert r.status_code == 200
         assert r.json()["explanation"]
 
 
 def test_get_unknown_opportunity_is_404(client):
-    assert client.get("/api/v1/opportunities/opp-nope").status_code == 404
+    assert client.get("/api/v1/opportunities/opp-nope", headers={"X-Org-Id": "northstar"}).status_code == 404
 
 
 def test_cors_allows_frontend_origin(client):

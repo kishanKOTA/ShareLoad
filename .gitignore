@@ -12,3 +12,9 @@ node_modules/
 
 # SQLite databases (proposals/audit are re-seeded by demo reset)
 *.db
+
+# Writable engine workspace, separate from immutable demo fixtures
+services/api/runtime/
+*.db-journal
+*.db-wal
+*.db-shm
